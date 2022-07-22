@@ -20,7 +20,7 @@ fortunes = ["You will injure your most precious body part in the near future",
 
 greetings = ["Yo",
         "Lol nerd",
-        "Uhhh who are you",
+        "Who are you",
         "Aloha",
         "Commencing ban",
         "hi"
@@ -41,5 +41,6 @@ async def on_message(message):
     if message.content.startswith('$fortune'):
         await message.channel.send(fortunes[random.randint(0,len(fortunes)-1)])
 
-client.run('ODE1NDU3NTA5NzU0MDExNjY5.GTiJrW.MZLl2eRDos2eik3pcAbtPf2o6hR33-zWrzDzSs')
+token=open("/home/pi/git/levi-bot/token.txt").readline().rstrip()
+client.run(token)
 
