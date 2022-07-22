@@ -1,0 +1,4 @@
+#!/bin/bash
+
+kill $(ps -ef | grep "python3 main.py" | grep -v grep | awk '{print $2}') 2>/dev/null
+python3 /home/pi/git/levi-bot/main.py &
