@@ -1,4 +1,6 @@
 #!/bin/bash
 
-kill $(ps -ef | grep "python3 main.py" | grep -v grep | awk '{print $2}') 2>/dev/null
+ps -ef | grep "/home/pi/git/levi-bot/main.py" | grep -v grep | while read trash pid trash; do
+	kill -9 $pid
+done
 python3 /home/pi/git/levi-bot/main.py &

@@ -2,24 +2,14 @@ import discord
 import os
 import random
 
+amaid=206298476802342912
+jenid=250073550478639104
+
 client = discord.Client()
 
-fortunes = ["You will injure your most precious body part in the near future", 
-        "Your fifth great grandchild will be really good at ping pong",
-        "You will grow an eye inside your mind that can predict the next taco bell special",
-        "Tomorrow you will wake up",
-        "3564543999 seconds from now you will blink",
-        "You will meet someone with a curtain fetish",
-        "There is a pastrami sandwich in your future",
-        "Your next thought will be about how delicious potatoes are",
-        "Tomorrow you will do the thing you've been meaning to do",
-        "5 years from today, you will unknowingly cross paths with a clown wrangler",
-        "You will be betrayed by your own insecurities",
-        "The next chicken you encouner will possess the soul of a lasagna",
-        "If you ever have to pick between your first and second child, clip your 3rd toenail for guidance"]
+fortunes = open("/home/pi/git/levi-bot/fortunes.txt", "r").readlines()
 
-greetings = ["Yo",
-        "Lol nerd",
+greetings = ["Lol nerd",
         "Who are you",
         "Aloha",
         "Commencing ban",
@@ -34,12 +24,23 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    
+
     if message.content.startswith('$hello'):
-        await message.channel.send(greetings[random.randint(0,len(greetings)-1)])
+        if message.author.id == jenid:
+            await message.channel.send("Hello Mistress")
+        else:
+            await message.channel.send(greetings[random.randint(0,len(greetings)-1)])
 
     if message.content.startswith('$fortune'):
         await message.channel.send(fortunes[random.randint(0,len(fortunes)-1)])
+
+    if message.content.startswith('$infraction'):
+        if message.author.id != jenid:
+            await message.channel.send("I don't take orders from you.")
+            return
+        taggedUser = message.mentions[0];
+        await message.channel.send('infracting ' + taggedUser.name)
+        
 
 token=open("/home/pi/git/levi-bot/token.txt").readline().rstrip()
 client.run(token)
