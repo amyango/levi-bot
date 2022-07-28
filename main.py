@@ -1,11 +1,13 @@
 import discord
 import os
 import random
+import json
+from json.decoder import JSONDecodeError
 
 ###############################################################################
 # IDs
 ###############################################################################
-# Found by toggling developer mode on your raspberry pi
+# Found by toggling developer mode on discord
 # They are recommended when identifying a user, since people
 # can change their usernames/nicknames
 amaid=206298476802342912
@@ -27,6 +29,19 @@ greetings = ["Lol nerd",
         "Commencing ban",
         "hi"
         ]
+
+###############################################################################
+# infractions list
+###############################################################################
+projectdir = "/home/pi/git/levi-bot/"
+infractfile = projectdir + "infractions.json"
+infractions = {}
+try: # Add try-catch in case the infractions.json file is empty
+    infractions = json.load(open(infractfile, 'r'))
+except JSONDecodeError:
+    pass
+
+print(infractions)
 
 @client.event
 async def on_ready():
@@ -61,8 +76,19 @@ async def on_message(message):
         if message.author.id != jenid:
             await message.channel.send("I don't take orders from you.")
             return
+
         taggedUser = message.mentions[0];
-        await message.channel.send('infracting ' + taggedUser.name)
+
+        if str(taggedUser.id) in infractions:
+            infractions[str(taggedUser.id)] += 1
+        else:
+            infractions[str(taggedUser.id)] = 1
+
+        with open(infractfile, 'w') as outfile:
+            json.dump(infractions, outfile)
+
+        msg="" + taggedUser.name + " infractions: " + str(infractions[str(taggedUser.id)])
+        await message.channel.send(msg)
         
 token=open("/home/pi/git/levi-bot/token.txt").readline().rstrip()
 client.run(token)
