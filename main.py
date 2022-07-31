@@ -98,7 +98,7 @@ async def bingo_stamp(message, words):
             await message.channel.send("NOT A NUMBER.\n" + usage)
             return
 
-        if idx > 23 or idx < 1:
+        if idx > 23 or idx < 0:
             await message.channel.send("Number out of range.\n" + usage)
             return
 
