@@ -1,8 +1,15 @@
 import discord
 import os
+import sys
 import random
+import time
 import json
+from datetime import datetime
 from json.decoder import JSONDecodeError
+import pokebase as pb
+
+def log(msg):
+    print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ' ' + msg, flush=True)
 
 ###############################################################################
 # IDs
@@ -13,7 +20,11 @@ from json.decoder import JSONDecodeError
 amaid=206298476802342912
 jenid=250073550478639104
 
-client = discord.Client()
+intents = discord.Intents.default()
+intents.members = True
+intents.reactions = True
+
+client = discord.Client(intents=intents)
 
 ###############################################################################
 # Create a list of quotes from fortunes.txt
@@ -34,10 +45,24 @@ greetings = ["Lol nerd",
 # infractions list
 ###############################################################################
 projectdir = "/home/pi/git/levi-bot/"
-infractfile = projectdir + "infractions.json"
+infractfile = projectdir + "data/infractions.json"
+pokefile = projectdir + "data/pokemon.json"
+pointsfile = projectdir + "data/points.json"
 infractions = {}
 try: # Add try-catch in case the infractions.json file is empty
     infractions = json.load(open(infractfile, 'r'))
+except JSONDecodeError:
+    pass
+
+pokemon = {}
+try: # Add try-catch in case the infractions.json file is empty
+    pokemon = json.load(open(pokefile, 'r'))
+except JSONDecodeError:
+    pass
+
+points = {}
+try: # Add try-catch in case the infractions.json file is empty
+    points = json.load(open(pointsfile, 'r'))
 except JSONDecodeError:
     pass
 
@@ -166,7 +191,28 @@ async def bingo_board_print(message):
 ###############################################################################
 @client.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    log('We have logged in as {0.user}'.format(client))
+
+@client.event
+async def on_reaction_add(reaction, user):
+    log('reaction on message by ' + reaction.message.author.name)
+
+    if reaction.message.author == client.user:
+        return
+
+    add_points(reaction.message.author.id, 1)
+
+    if reaction.emoji == '⬅':
+        if reaction.message.id in menus:
+            log("message")
+    elif reaction.emoji == '➡':
+        if reaction.message.id in menus:
+            log("message")
+
+@client.event
+async def on_reaction_remove(reaction, user):
+    log('reaction removed on message by ' + reaction.message.author.name)
+    add_points(reaction.message.author.id, -1)
 
 @client.event
 async def on_message(message):
@@ -198,7 +244,7 @@ async def on_message(message):
             await message.channel.send("I don't take orders from you.")
             return
 
-        taggedUser = message.mentions[0];
+        taggedUser = message.mentions[0]
 
         if str(taggedUser.id) in infractions:
             infractions[str(taggedUser.id)] += 1
@@ -212,10 +258,101 @@ async def on_message(message):
         await message.channel.send(msg)
 
     ###########################################################################
+    # Points command
+    ###########################################################################
+    if message.content.startswith('$points'):
+
+        if not str(message.author.id) in points:
+            points[str(message.author.id)] = 0
+
+        msg="" + message.author.name + " points: " + str(points[str(message.author.id)])
+        await message.channel.send(msg)
+
+    ###########################################################################
     # Bingo
     ###########################################################################
     if message.content.startswith('$bingo'):
         await dobingo(message)
+
+    ###########################################################################
+    # Gatcha
+    ###########################################################################
+    if message.content.startswith('$roll'):
+
+        team = get_pokemon(message.author.id)
+
+        if len(team) == 0:
+            newpokeid = random.randint(1, 898)
+        else:
+            pts = get_points(message.author.id)
+            if pts < 10:
+                await message.channel.send('You have insufficient points (10 per roll): ' + str(pts))
+                return
+            add_points(message.author.id, -10)
+            newpokeid = random.randint(1, 898)
+
+        await message.channel.send(':game_die: R O L L I N G :game_die:')
+
+        newpoke = pb.pokemon(newpokeid)
+        team.append(newpokeid)
+        set_pokemon(message.author.id, team)
+
+        log(message.author.name + ' new pokemon ' + newpoke.name)
+
+        await message.channel.send('Welcome ' + newpoke.name + ' to your team!')
+        await message.channel.send(pb.SpriteResource('pokemon', newpokeid).url)
+
+    if message.content.startswith('$team'):
+
+        if len(message.mentions) > 0:
+            user = message.mentions[0];
+        else:
+            user = message.author
+
+        team = get_pokemon(user.id)
+
+        i = 0
+        secs = 0
+
+        for pokemon in team:
+            embed = poke_embed(pokemon)
+            await message.channel.send(embed=embed)
+        #await message.add_reaction('⬅')
+        #await message.add_reaction('➡')
+
+def poke_embed(pokemon):
+    entry = pb.pokemon(pokemon)
+    embed = discord.Embed(title=entry.name.capitalize())
+    sprite = pb.SpriteResource('pokemon', pokemon)
+    embed.set_thumbnail(url=sprite.url)
+    return embed
+
+
+def get_points(uid):
+    if not str(uid) in points:
+        points[str(uid)] = 0
+    return points[str(uid)]
+
+def add_points(uid, pts):
+    if not str(uid) in points:
+        points[str(uid)] = 0
+    else:
+        points[str(uid)] += pts
+
+    with open(pointsfile, 'w') as outfile:
+        json.dump(points, outfile)
+
+    return points[str(uid)]
+
+def set_pokemon(uid, team):
+    pokemon[str(uid)] = team
+    with open(pokefile, 'w') as outfile:
+        json.dump(pokemon, outfile)
+    
+def get_pokemon(uid):
+    if not str(uid) in pokemon:
+        pokemon[str(uid)] = []
+    return pokemon[str(uid)]
         
 token=open("/home/pi/git/levi-bot/token.txt").readline().rstrip()
 client.run(token)

@@ -1,6 +1,9 @@
 #!/bin/bash
 
+logfile=/home/pi/git/levi-bot/levi.log
+errfile=/home/pi/git/levi-bot/levi.errlog
+
 ps -ef | grep "/home/pi/git/levi-bot/main.py" | grep -v grep | while read trash pid trash; do
 	kill -9 $pid
 done
-python3 /home/pi/git/levi-bot/main.py > /home/pi/git/levi-bot/levi.log 2>&1 &
+python3 /home/pi/git/levi-bot/main.py 2>&1 | tee levi.out &
