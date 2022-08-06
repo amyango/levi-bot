@@ -159,17 +159,29 @@ async def do_pokeroll(message):
 
     log(message.author.name + ' new pokemon ' + newpoke['name'])
 
-    await message.channel.send('Welcome ' + newpoke['name'] + ' to your team!')
+    name = newpoke['name']
+
+    if newpoke['shiny']:
+        name = ':star: ' + newpoke['name'] + ' :star:'
+
+    await message.channel.send('Welcome ' + name + ' to your team!')
+        
     await message.channel.send(newpoke['basepic'])
 
 ###############################################################################
 # Create new pokemon
 ###############################################################################
 def newpokemon(pid):
+
+    is_shiny = False
+    if random.randint(0, 512) == 69:
+        is_shiny = True
+
     newpokemon = {}
     newpokemon['id'] = pid
     newpokemon['name'] = pb.pokemon(pid).name
-    newpokemon['basepic'] = pb.SpriteResource('pokemon', pid).url
+    newpokemon['shiny'] = is_shiny
+    newpokemon['basepic'] = pb.SpriteResource('pokemon', pid, shiny=is_shiny).url
     return newpokemon
 
 ###############################################################################
@@ -220,7 +232,7 @@ async def do_murder(message):
         return
 
     for i in range(len(team)):
-        if team[i]['name'] == lower(words[1]):
+        if team[i]['name'] == words[1].lower():
             nberries = random.randint(1, 10)
             await message.channel.send('Goodbye ' + team[i]['name'] + '!')
             await message.channel.send(team[i]['basepic'])
@@ -316,14 +328,16 @@ async def do_slots(message):
         nspins = 1
         await message.channel.send('NOT A NUMBER ')
 
-
+    slots_message = ''
     while nspins > 0:
         nspins -= 1
         pts = get_points(message.author.id)
         if pts < 1:
             await message.channel.send(poorbitch + str(pts))
             return
-        await pull_slot(message)
+        single_pull = await pull_slot(message)
+        slots_message = slots_message + single_pull
+    await message.channel.send(slots_message)
 
 async def pull_slot(message):
 
@@ -336,7 +350,7 @@ async def pull_slot(message):
     for i in range(0, ncols):
         result[i] = random.randint(0, len(icons)-1)
         string = string + icons[result[i]]
-    await message.channel.send(string)
+    # await message.channel.send(string)
 
     max_icon = 0
     max_matches = 1
@@ -352,19 +366,20 @@ async def pull_slot(message):
             max_icon = i
             max_matches = matches
 
-    string=''
+    # string=''
 
     if max_matches == ncols:
         pts = (max_icon + 1) * 10
-        string = string + '\n    J A C K P O T    \n***' + str(pts) + '***'
+        string = string + '\n    J A C K P O T    \n***' + str(pts) + '*** \n'
     elif max_matches > 1:
         pts = ((max_icon + 1) // 2) + 1
-        string = string + '\nSmall Winner!\n***' + str(pts) + '***'
+        string = string + '\nSmall Winner!\n***' + str(pts) + '*** \n'
     else:
-        string = string + '\n***' + 'Try again' + '***' + ' :grimacing:'
+        string = string + '\n***' + 'Try again' + '***' + ' :grimacing: \n'
     
-    await message.channel.send(string)
+    # await message.channel.send(string)
     add_points(message.author.id, pts)
+    return string
 
 def poke_embed(pokemon):
     embed = discord.Embed(title=pokemon['name'].capitalize())
