@@ -220,7 +220,7 @@ async def do_murder(message):
         return
 
     for i in range(len(team)):
-        if team[i]['name'] == words[1]:
+        if team[i]['name'] == lower(words[1]):
             nberries = random.randint(1, 10)
             await message.channel.send('Goodbye ' + team[i]['name'] + '!')
             await message.channel.send(team[i]['basepic'])
