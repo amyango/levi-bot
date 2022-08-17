@@ -56,6 +56,7 @@ pokefile = datadir + "pokemon.json"
 berryfile = datadir + "berries.json"
 poketeamsfile = datadir + "poketeams.json"
 pointsfile = datadir + "points.json"
+boxfile = datadir + "boxes.json"
 
 fortunes = open(fortunefile, "r").readlines()
 greetings = open(greetingfile, "r").readlines()
@@ -64,6 +65,7 @@ pokemon = openjson(pokefile)
 poketeams = openjson(poketeamsfile)
 points = openjson(pointsfile)
 berries = openjson(berryfile)
+boxes = openjson(boxfile)
 
 ###############################################################################
 # Pokemon
@@ -174,7 +176,9 @@ async def do_pokeroll(message):
 def newpokemon(pid):
 
     is_shiny = False
-    if random.randint(0, 512) == 69:
+    n = random.randint(0, 512)
+    log(str(n))
+    if n == 69:
         is_shiny = True
 
     newpokemon = {}
@@ -296,7 +300,8 @@ async def on_message(message):
         await do_poketeam(message)
         return
 
-    if message.content.startswith('$tothefarm'):
+    if (message.content.startswith('$tothefarm') or
+        message.content.startswith('$yeet')):
         await do_murder(message)
         return
 
@@ -307,6 +312,125 @@ async def on_message(message):
 
     if message.content.startswith('$slots'):
         await do_slots(message)
+        return
+
+    if message.content.startswith('$box'):
+        await do_pokebox(message)
+        return
+
+    if message.content.startswith('$give'):
+        await do_give(message)
+        return
+
+async def do_give(message):
+
+    giveusage='Usage: $give <@user> <pokemon>'
+
+    if len(message.mentions) < 1:
+        await message.channel.send(giveusage)
+        return
+
+    taggedUser = message.mentions[0]
+    try:
+        pokename = message.content.split(" ")[2]
+    except:
+        await message.channel.send(giveusage)
+        return
+
+    myteam=get_poketeam(message.author.id)
+    otherteam=get_poketeam(taggedUser.id)
+
+    if len(otherteam) >= 6:
+        await message.channel.send(taggedUser.name + ' has a full team')
+        return
+
+    poke=get_pokemon(myteam, pokename)
+
+    if len(poke) <= 0:
+        await message.channel.send('Could not find ' + pokename + ' in your team')
+        return
+
+    otherteam.append(poke)
+    await message.channel.send(pokename + ' moved to ' + taggedUser.name + '\'s team')
+    set_poketeam(message.author.id, myteam)
+    set_poketeam(taggedUser.id, otherteam)
+
+def get_pokemon(team, pokename):
+    victim = {}
+    for i in range(len(team)):
+        if team[i]['name'] == pokename.lower():
+            return team.pop(i)
+    return victim
+
+async def do_pokebox(message):
+    # Put a pokemon in a box
+    boxusage='usage: $box get/store <pokemon> OR $box show'
+
+    words = message.content.split(" ")
+
+    if len(words) < 2:
+        await message.channel.send(boxusage)
+        return
+
+    cmd = words[1]
+
+    team = get_poketeam(message.author.id)
+    box = get_pokebox(message.author.id)
+
+    if cmd == 'get':
+        pokename = words[2]
+        if len(words) < 2:
+            await message.channel.send(boxusage)
+            return
+
+        # Find pokemon in box and put in team
+        if len(team) >= 6:
+            msg = 'Your team is full'
+        else:
+            victim = get_pokemon(box, pokename)
+            msg = 'Could not find ' + pokename + ' in box'
+            if len(victim) > 0:
+                team.append(victim)
+                msg = pokename + ' moved to team'
+                set_pokebox(message.author.id, box)
+        await message.channel.send(msg)
+
+    elif cmd == 'store':
+        pokename = words[2]
+        if len(words) < 2:
+            await message.channel.send(boxusage)
+            return
+
+        # Find pokemon in team and put in box
+        if len(box) >= 30:
+            msg = 'Your box is full'
+        else:
+            victim = get_pokemon(team, pokename)
+            msg = 'Could not find ' + pokename + ' in team'
+            if len(victim) > 0:
+                box.append(victim)
+                msg = pokename + ' moved to box'
+                set_pokebox(message.author.id, box)
+        await message.channel.send(msg)
+
+    elif cmd == 'show':
+        # Print box contents
+        if len(box) > 0:
+            embed = discord.Embed(title=message.author.name + '\'s boxu')
+            pokestring = ''
+            for poke in box:
+                if not 'lvl' in poke:
+                    poke['lvl'] = 1
+                pokestring+='lvl ' + str(poke['lvl']) + ' ' + poke['name'].capitalize() + '\n'
+                #embed.add_field(name=poke['name'].capitalize(), value=poke['lvl'], inline=True)
+            embed.add_field(name='Box 1', value=pokestring, inline=True)
+            await message.channel.send(embed=embed)
+            return
+        else:
+            msg = 'Box is empty'
+            await message.channel.send(msg)
+    else:
+        print(boxusage)
         return
 
 async def do_slots(message):
@@ -417,16 +541,6 @@ def add_points(uid, pts):
     with open(pointsfile, 'w') as outfile:
         json.dump(points, outfile)
 
-#def set_pokemon(uid, team):
-#    pokemon[str(uid)] = team
-#    with open(pokefile, 'w') as outfile:
-#        json.dump(pokemon, outfile)
-    
-#def get_pokemon(uid):
-#    if not str(uid) in pokemon:
-#        pokemon[str(uid)] = []
-#    return pokemon[str(uid)]
-
 def get_poketeam(uid):
     if not str(uid) in poketeams:
         poketeams[str(uid)] = []
@@ -436,6 +550,16 @@ def set_poketeam(uid, team):
     poketeams[str(uid)] = team
     with open(poketeamsfile, 'w') as outfile:
         json.dump(poketeams, outfile)
+
+def get_pokebox(uid):
+    if not str(uid) in boxes:
+        boxes[str(uid)] = []
+    return boxes[str(uid)]
+
+def set_pokebox(uid, team):
+    boxes[str(uid)] = team
+    with open(boxfile, 'w') as outfile:
+        json.dump(boxes, outfile)
  
 token=open("/home/pi/git/levi-bot/token.txt").readline().rstrip()
 client.run(token)
